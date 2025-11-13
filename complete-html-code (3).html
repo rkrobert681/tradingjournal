@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dhan Trading Journal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e293b 0%, #1e40af 50%, #1e293b 100%);
+            min-height: 100vh;
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div class="max-w-md mx-auto">
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 mb-4">
+            <h1 class="text-3xl font-bold text-white mb-2">📊 Dhan Trading Journal</h1>
+            <div class="flex gap-4 text-sm">
+                <div class="text-white/80">Open: <span id="openCount" class="font-bold text-yellow-300">0</span></div>
+                <div class="text-white/80">Today P&L: <span id="todayPnl" class="font-bold text-green-300">₹0.00</span></div>
+            </div>
+        </div>
+
+        <div class="flex gap-2 mb-4">
+            <button onclick="showTab('entry')" id="tabEntry" class="flex-1 py-3 rounded-xl font-semibold bg-blue-500 text-white shadow-lg">Entry</button>
+            <button onclick="showTab('exit')" id="tabExit" class="flex-1 py-3 rounded-xl font-semibold bg-white/10 text-white/70">Exit</button>
+            <button onclick="showTab('summary')" id="tabSummary" class="flex-1 py-3 rounded-xl font-semibold bg-white/10 text-white/70">Summary</button>
+        </div>
+
+        <div id="entryTab" class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 space-y-4">
+            <h2 class="text-xl font-bold text-white mb-4">🟢 New Trade Entry</h2>
+            <input type="text" id="symbol" placeholder="Symbol (e.g., RELIANCE)" class="w-full p-3 rounded-lg bg-white/20 text-white placeholder-white/50 border border-white/20 focus:border-blue-400 focus:outline-none">
+            <select id="tradeType" class="w-full p-3 rounded-lg bg-white/20 text-white border border-white/20 focus:border-blue-400 focus:outline-none">
+                <option value="BUY">BUY</option>
+                <option value="SELL">SELL</option>
+            </select>
+            <div class="grid grid-cols-2 gap-4">
+                <input type="number" step="0.01" id="entry" placeholder="Entry Price" class="p-3 rounded-lg bg-white/20 text-white placeholder-white/50 border border-white/20 focus:border-blue-400 focus:outline-none">
+                <input type="number" id="quantity" placeholder="Quantity" class="p-3 rounded-lg bg-white/20 text-white placeholder-white/50 border border-white/20 focus:border-blue-400 focus:outline-none">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <input type="number" step="0.01" id="target" placeholder="Target" class="p-3 rounded-lg bg-white/20 text-white placeholder-white/50 border border-white/20 focus:border-blue-400 focus:outline-none">
+                <input type="number" step="0.01" id="stoploss" placeholder="Stop Loss" class="p-3 rounded-lg bg-white/20 text-white placeholder-white/50 border border-white/20 focus:border-blue-400 focus:outline-none">
+            </div>
+            <textarea id="notes" placeholder="Notes (optional)" rows="2" class="w-full p-3 rounded-lg bg-white/20 text-white placeholder-white/50 border border-white/20 focus:border-blue-400 focus:outline-none"></textarea>
+            <button onclick="logEntry()" id="btnEntry" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition-colors">✅ Log Trade Entry</button>
+        </div>
+
+        <div id="exitTab" class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 hidden">
+            <h2 class="text-xl font-bold text-white mb-4">🔴 Open Positions</h2>
+            <div id="openTrades"></div>
+        </div>
+
+        <div id="exitForm" class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 space-y-4 hidden">
+            <h2 class="text-xl font-bold text-white mb-4">Exit Trade</h2>
+            <div id="selectedTradeInfo" class="bg-white/10 rounded-lg p-4 border border-white/20 mb-4"></div>
+            <input type="number" step="0.01" id="exitPrice" placeholder="Exit Price" class="w-full p-3 rounded-lg bg-white/20 text-white placeholder-white/50 border border-white/20 focus:border-blue-400 focus:outline-none">
+            <textarea id="exitNotes" placeholder="Exit notes (optional)" rows="2" class="w-full p-3 rounded-lg bg-white/20 text-white placeholder-white/50 border border-white/20 focus:border-blue-400 focus:outline-none"></textarea>
+            <div class="flex gap-2">
+                <button onclick="cancelExit()" class="flex-1 bg-white/20 hover:bg-white/30 text-white font-semibold py-3 rounded-lg transition-colors">Cancel</button>
+                <button onclick="logExit()" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-lg transition-colors">✅ Log Exit</button>
+            </div>
+        </div>
+
+        <div id="summaryTab" class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 space-y-4 hidden">
+            <h2 class="text-xl font-bold text-white mb-4">📊 Summary</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white/10 rounded-lg p-4 border border-white/20">
+                    <div class="text-white/60 text-sm">Total Trades</div>
+                    <div id="totalTrades" class="text-white text-2xl font-bold">0</div>
+                </div>
+                <div class="bg-white/10 rounded-lg p-4 border border-white/20">
+                    <div class="text-white/60 text-sm">Today P&L</div>
+                    <div id="summaryPnl" class="text-2xl font-bold text-green-300">₹0.00</div>
+                </div>
+            </div>
+            <button onclick="sendDailySummary()" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 rounded-lg transition-colors">📊 Send Daily Summary</button>
+            <button onclick="sendMonthlySummary()" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-lg transition-colors">📅 Send Monthly Summary</button>
+            <div class="pt-4"><h3 class="text-white font-semibold mb-3">Today's Trades</h3><div id="todayTrades"></div></div>
+        </div>
+    </div>
+
+    <script>
+        const BOT_TOKEN = '8489930334:AAFpZpASPCcR6mEQhar72-9Nb3pYZJwOqXE';
+        const CHAT_ID = '5330125827';
+        let trades = [];
+        let selectedTrade = null;
+
+        function loadTrades() {
+            const saved = localStorage.getItem('dhan-trades');
+            if (saved) trades = JSON.parse(saved);
+            updateUI();
+        }
+
+        function saveTrades() {
+            localStorage.setItem('dhan-trades', JSON.stringify(trades));
+            updateUI();
+        }
+
+        async function sendTelegram(message) {
+            try {
+                const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: 'HTML' })
+                });
+                return response.ok;
+            } catch (error) {
+                console.error('Telegram error:', error);
+                return false;
+            }
+        }
+
+        function formatTime() {
+            return new Date().toLocaleString('en-IN', { 
+                timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+        }
+
+        async function logEntry() {
+            const symbol = document.getElementById('symbol').value.toUpperCase();
+            const tradeType = document.getElementById('tradeType').value;
+            const entry = document.getElementById('entry').value;
+            const quantity = document.getElementById('quantity').value;
+            const target = document.getElementById('target').value;
+            const stoploss = document.getElementById('stoploss').value;
+            const notes = document.getElementById('notes').value;
+
+            if (!symbol || !entry || !quantity || !target || !stoploss) {
+                alert('Please fill all required fields!');
+                return;
+            }
+
+            const btn = document.getElementById('btnEntry');
+            btn.disabled = true;
+            btn.textContent = '⏳ Sending...';
+
+            const trade = {
+                id: Date.now(), symbol, type: tradeType, entry, quantity, target, stoploss, notes,
+                entryTime: formatTime(), status: 'OPEN', pnl: 0
+            };
+
+            const message = `🟢 <b>TRADE ENTRY</b>\n\n📊 Symbol: <b>${trade.symbol}</b>\n${trade.type === 'BUY' ? '📈' : '📉'} Type: <b>${trade.type}</b>\n💰 Entry: ₹${trade.entry}\n📦 Quantity: ${trade.quantity}\n🎯 Target: ₹${trade.target}\n🛑 Stop Loss: ₹${trade.stoploss}\n⏰ Time: ${trade.entryTime}${trade.notes ? `\n📝 Notes: ${trade.notes}` : ''}`;
+
+            const success = await sendTelegram(message);
+            
+            if (success) {
+                trades.push(trade);
+                saveTrades();
+                document.getElementById('symbol').value = '';
+                document.getElementById('entry').value = '';
+                document.getElementById('quantity').value = '';
+                document.getElementById('target').value = '';
+                document.getElementById('stoploss').value = '';
+                document.getElementById('notes').value = '';
+                alert('✅ Trade logged and sent to Telegram!');
+            } else {
+                alert('❌ Failed to send to Telegram.');
+            }
+
+            btn.disabled = false;
+            btn.textContent = '✅ Log Trade Entry';
+        }
+
+        async function logStopLoss(tradeId) {
+            const trade = trades.find(t => t.id === tradeId);
+            if (!trade) return;
+
+            const pnl = trade.type === 'BUY' 
+                ? (parseFloat(trade.stoploss) - parseFloat(trade.entry)) * parseFloat(trade.quantity)
+                : (parseFloat(trade.entry) - parseFloat(trade.stoploss)) * parseFloat(trade.quantity);
+
+            const message = `🔴 <b>STOP LOSS HIT</b>\n\n📊 Symbol: <b>${trade.symbol}</b>\n${trade.type === 'BUY' ? '📈' : '📉'} Type: <b>${trade.type}</b>\n💰 Entry: ₹${trade.entry}\n🛑 Stop Loss: ₹${trade.stoploss}\n📦 Quantity: ${trade.quantity}\n💸 P&L: <b>${pnl >= 0 ? '+' : ''}₹${pnl.toFixed(2)}</b>\n⏰ Exit Time: ${formatTime()}\n⏱️ Entry Time: ${trade.entryTime}`;
+
+            const success = await sendTelegram(message);
+            
+            if (success) {
+                trade.status = 'CLOSED';
+                trade.exitPrice = trade.stoploss;
+                trade.exitTime = formatTime();
+                trade.pnl = pnl;
+                saveTrades();
+                alert('✅ Stop loss logged!');
+            }
+        }
+
+        function selectTradeForExit(tradeId) {
+            selectedTrade = trades.find(t => t.id === tradeId);
+            if (!selectedTrade) return;
+
+            document.getElementById('selectedTradeInfo').innerHTML = `
+                <div class="text-white font-bold text-lg mb-2">${selectedTrade.symbol}</div>
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                    <div><span class="text-white/60">Type:</span> <span class="text-white">${selectedTrade.type}</span></div>
+                    <div><span class="text-white/60">Entry:</span> <span class="text-white">₹${selectedTrade.entry}</span></div>
+                    <div><span class="text-white/60">Qty:</span> <span class="text-white">${selectedTrade.quantity}</span></div>
+                    <div><span class="text-white/60">Target:</span> <span class="text-green-300">₹${selectedTrade.target}</span></div>
+                </div>
+            `;
+
+            document.getElementById('exitTab').classList.add('hidden');
+            document.getElementById('exitForm').classList.remove('hidden');
+        }
+
+        function cancelExit() {
+            selectedTrade = null;
+            document.getElementById('exitPrice').value = '';
+            document.getElementById('exitNotes').value = '';
+            document.getElementById('exitForm').classList.add('hidden');
+            document.getElementById('exitTab').classList.remove('hidden');
+        }
+
+        async function logExit() {
+            const exitPrice = document.getElementById('exitPrice').value;
+            const exitNotes = document.getElementById('exitNotes').value;
+
+            if (!exitPrice) {
+                alert('Please enter exit price!');
+                return;
+            }
+
+            const exit = parseFloat(exitPrice);
+            const pnl = selectedTrade.type === 'BUY'
+                ? (exit - parseFloat(selectedTrade.entry)) * parseFloat(selectedTrade.quantity)
+                : (parseFloat(selectedTrade.entry) - exit) * parseFloat(selectedTrade.quantity);
+
+            const message = `${pnl >= 0 ? '🟢' : '🔴'} <b>TRADE EXIT</b>\n\n📊 Symbol: <b>${selectedTrade.symbol}</b>\n${selectedTrade.type === 'BUY' ? '📈' : '📉'} Type: <b>${selectedTrade.type}</b>\n💰 Entry: ₹${selectedTrade.entry}\n🚪 Exit: ₹${exit}\n📦 Quantity: ${selectedTrade.quantity}\n💸 P&L: <b>${pnl >= 0 ? '+' : ''}₹${pnl.toFixed(2)}</b>\n⏰ Exit Time: ${formatTime()}\n⏱️ Entry Time: ${selectedTrade.entryTime}${exitNotes ? `\n📝 Notes: ${exitNotes}` : ''}`;
+
+            const success = await sendTelegram(message);
+            
+            if (success) {
+                selectedTrade.status = 'CLOSED';
+                selectedTrade.exitPrice = exit;
+                selectedTrade.exitTime = formatTime();
+                selectedTrade.pnl = pnl;
+                saveTrades();
+                cancelExit();
+                showTab('summary');
+                alert('✅ Trade exit logged!');
+            }
+        }
+
+        async function sendDailySummary() {
+            const today = new Date().toDateString();
+            const todayTrades = trades.filter(t => new Date(t.entryTime).toDateString() === today);
+            const closedTrades = todayTrades.filter(t => t.status === 'CLOSED');
+            const openTrades = todayTrades.filter(t => t.status === 'OPEN');
+            
+            const totalPnl = closedTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+            const winners = closedTrades.filter(t => t.pnl > 0).length;
+            const losers = closedTrades.filter(t => t.pnl < 0).length;
+
+            const message = `📊 <b>DAILY SUMMARY</b>\n📅 ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}\n\n📈 Total Trades: ${todayTrades.length}\n✅ Closed: ${closedTrades.length}\n⏳ Open: ${openTrades.length}\n\n${closedTrades.length > 0 ? `🎯 Winners: ${winners}\n❌ Losers: ${losers}\n📊 Win Rate: ${((winners / closedTrades.length) * 100).toFixed(1)}%\n\n💰 <b>Net P&L: ${totalPnl >= 0 ? '+' : ''}₹${totalPnl.toFixed(2)}</b>\n` : 'No closed trades today.'}${openTrades.length > 0 ? `\n<b>Open Positions:</b>\n${openTrades.map(t => `• ${t.symbol} ${t.type} @ ₹${t.entry}`).join('\n')}` : ''}`;
+
+            const success = await sendTelegram(message);
+            if (success) alert('✅ Daily summary sent!');
+        }
+
+        async function sendMonthlySummary() {
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+            
+            const monthTrades = trades.filter(t => {
+                const tradeDate = new Date(t.entryTime);
+                return tradeDate.getMonth() === currentMonth && tradeDate.getFullYear() === currentYear;
+            });
+            
+            const closedTrades = monthTrades.filter(t => t.status === 'CLOSED');
+            const openTrades = monthTrades.filter(t => t.status === 'OPEN');
+            
+            const totalPnl = closedTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+            const winners = closedTrades.filter(t => t.pnl > 0).length;
+            const losers = closedTrades.filter(t => t.pnl < 0).length;
+            
+            const sortedTrades = [...closedTrades].sort((a, b) => b.pnl - a.pnl);
+            const bestTrade = sortedTrades[0];
+            const worstTrade = sortedTrades[sortedTrades.length - 1];
+            
+            const avgPnl = closedTrades.length > 0 ? totalPnl / closedTrades.length : 0;
+            
+            const symbolStats = {};
+            closedTrades.forEach(t => {
+                if (!symbolStats[t.symbol]) symbolStats[t.symbol] = { count: 0, pnl: 0 };
+                symbolStats[t.symbol].count++;
+                symbolStats[t.symbol].pnl += t.pnl;
+            });
+            
+            const mostTraded = Object.entries(symbolStats).sort((a, b) => b[1].count - a[1].count)[0];
+            const monthName = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
+            const message = `📅 <b>MONTHLY SUMMARY - ${monthName}</b>\n\n📊 <b>OVERVIEW</b>\n📈 Total Trades: ${monthTrades.length}\n✅ Closed: ${closedTrades.length}\n⏳ Open: ${openTrades.length}\n\n${closedTrades.length > 0 ? `🎯 Winners: ${winners} (${((winners / closedTrades.length) * 100).toFixed(1)}%)\n❌ Losers: ${losers} (${((losers / closedTrades.length) * 100).toFixed(1)}%)\n\n💰 <b>P&L STATS</b>\nNet P&L: ${totalPnl >= 0 ? '+' : ''}₹${totalPnl.toFixed(2)}\nAvg P&L per Trade: ${avgPnl >= 0 ? '+' : ''}₹${avgPnl.toFixed(2)}\n\n${bestTrade ? `🏆 Best Trade: ${bestTrade.symbol} (+₹${bestTrade.pnl.toFixed(2)})\n` : ''}${worstTrade ? `📉 Worst Trade: ${worstTrade.symbol} (₹${worstTrade.pnl.toFixed(2)})\n` : ''}${mostTraded ? `\n🔥 Most Traded: ${mostTraded[0]} (${mostTraded[1].count} trades, ${mostTraded[1].pnl >= 0 ? '+' : ''}₹${mostTraded[1].pnl.toFixed(2)})` : ''}` : 'No closed trades this month.'}${openTrades.length > 0 ? `\n\n<b>Current Open: ${openTrades.length}</b>\n${openTrades.map(t => `• ${t.symbol} ${t.type} @ ₹${t.entry}`).join('\n')}` : ''}`;
+
+            const success = await sendTelegram(message);
+            if (success) alert('✅ Monthly summary sent!');
+        }
+
+        function showTab(tab) {
+            document.getElementById('entryTab').classList.add('hidden');
+            document.getElementById('exitTab').classList.add('hidden');
+            document.getElementById('exitForm').classList.add('hidden');
+            document.getElementById('summaryTab').classList.add('hidden');
+
+            document.getElementById('tabEntry').className = 'flex-1 py-3 rounded-xl font-semibold bg-white/10 text-white/70';
+            document.getElementById('tabExit').className = 'flex-1 py-3 rounded-xl font-semibold bg-white/10 text-white/70';
+            document.getElementById('tabSummary').className = 'flex-1 py-3 rounded-xl font-semibold bg-white/10 text-white/70';
+
+            if (tab === 'entry') {
+                document.getElementById('entryTab').classList.remove('hidden');
+                document.getElementById('tabEntry').className = 'flex-1 py-3 rounded-xl font-semibold bg-blue-500 text-white shadow-lg';
+            } else if (tab === 'exit') {
+                document.getElementById('exitTab').classList.remove('hidden');
+                document.getElementById('tabExit').className = 'flex-1 py-3 rounded-xl font-semibold bg-blue-500 text-white shadow-lg';
+                renderOpenTrades();
+            } else if (tab === 'summary') {
+                document.getElementById('summaryTab').classList.remove('hidden');
+                document.getElementById('tabSummary').className = 'flex-1 py-3 rounded-xl font-semibold bg-blue-500 text-white shadow-lg';
+                renderSummary();
+            }
+        }
+
+        function renderOpenTrades() {
+            const openTrades = trades.filter(t => t.status === 'OPEN');
+            const container = document.getElementById('openTrades');
+
+            if (openTrades.length === 0) {
+                container.innerHTML = '<p class="text-white/60 text-center py-8">No open trades</p>';
+                return;
+            }
+
+            container.innerHTML = openTrades.map(trade => `
+                <div class="bg-white/10 rounded-lg p-4 border border-white/20 mb-3">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <div class="text-white font-bold text-lg">${trade.symbol}</div>
+                            <div class="text-white/60 text-sm">${trade.type} • ${trade.entryTime}</div>
+                        </div>
+                        <div class="px-2 py-1 rounded text-xs font-bold ${trade.type === 'BUY' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}">${trade.type}</div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-sm mb-3">
+                        <div><div class="text-white/60">Entry</div><div class="text-white font-semibold">₹${trade.entry}</div></div>
+                        <div><div class="text-white/60">Target</div><div class="text-green-300 font-semibold">₹${trade.target}</div></div>
+                        <div><div class="text-white/60">SL</div><div class="text-red-300 font-semibold">₹${trade.stoploss}</div></div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="selectTradeForExit(${trade.id})" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 rounded-lg">Exit</button>
+                        <button onclick="logStopLoss(${trade.id})" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-lg">SL Hit</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderSummary() {
+            const today = new Date().toDateString();
+            const todayTrades = trades.filter(t => new Date(t.entryTime).toDateString() === today);
+            const todayPnl = todayTrades.filter(t => t.status === 'CLOSED').reduce((sum, t) => sum + (t.pnl || 0), 0);
+
+            document.getElementById('totalTrades').textContent = todayTrades.length;
+            document.getElementById('summaryPnl').textContent = `₹${todayPnl.toFixed(2)}`;
+            document.getElementById('summaryPnl').className = `text-2xl font-bold ${todayPnl >= 0 ? 'text-green-300' : 'text-red-300'}`;
+
+            const container = document.getElementById('todayTrades');
+            if (todayTrades.length === 0) {
+                container.innerHTML = '<p class="text-white/60 text-center py-8">No trades today</p>';
+                return;
+            }
+
+            container.innerHTML = todayTrades.map(trade => `
+                <div class="bg-white/10 rounded-lg p-3 border border-white/20 mb-2">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="text-white font-semibold">${trade.symbol}</div>
+                            <div class="text-white/60 text-xs">${trade.type} • ${trade.entryTime}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs font-semibold px-2 py-1 rounded ${trade.status === 'OPEN' ? 'bg-yellow-500/20 text-yellow-300' : 'bg-gray-500/20 text-gray-300'}">${trade.status}</div>
+                            ${trade.status === 'CLOSED' ? `<div class="text-sm font-bold mt-1 ${trade.pnl >= 0 ? 'text-green-300' : 'text-red-300'}">${trade.pnl >= 0 ? '+' : ''}₹${trade.pnl.toFixed(2)}</div>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateUI() {
+            const openTrades = trades.filter(t => t.status === 'OPEN');
+            const today = new Date().toDateString();
+            const todayTrades = trades.filter(t => new Date(t.entryTime).toDateString() === today);
+            const todayPnl = todayTrades.filter(t => t.status === 'CLOSED').reduce((sum, t) => sum + (t.pnl || 0), 0);
+
+            document.getElementById('openCount').textContent = openTrades.length;
+            document.getElementById('todayPnl').textContent = `₹${todayPnl.toFixed(2)}`;
+            document.getElementById('todayPnl').className = `font-bold ${todayPnl >= 0 ? 'text-green-300' : 'text-red-300'}`;
+        }
+
+        loadTrades();
+    </script>
+</body>
+</html>
